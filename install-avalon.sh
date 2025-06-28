@@ -2,86 +2,97 @@
 set -euo pipefail
 
 DISCO="/dev/sda"
-EFI_SIZE="512M"
+EFI_SIZE="512MiB"
+ROOT_SIZE="20GiB"
+SWAP_SIZE="2GiB"
 HOSTNAME="avalon"
 LOCALE="pt_BR.UTF-8"
+USUARIO="avalon"
+SENHA="archroot"
 
-echo "==> Verificando internet..."
-ping -c 3 archlinux.org
+echo "[1/13] 🌐 Verificando conexão com a internet..."
+ping -c 3 archlinux.org >/dev/null || { echo "❌ Sem conexão!"; exit 1; }
 
-echo "==> Ajustando teclado para ABNT2"
-loadkeys br-abnt2 || echo "Falha ao ajustar teclado, continue..."
+echo "[2/13] ⌨️ Ajustando layout de teclado para ABNT2..."
+loadkeys br-abnt2 || true
 
-echo "==> Particionando disco $DISCO com cfdisk (automático)..."
+echo "[3/13] 🧠 Verificando se sistema é UEFI..."
+if [ -d /sys/firmware/efi ]; then
+  MODO_BOOT="uefi"
+  echo "✅ Sistema iniciado em modo UEFI"
+else
+  MODO_BOOT="bios"
+  echo "⚠️ Sistema iniciado em modo BIOS"
+fi
 
-# Aqui particiona usando parted para script (mais seguro que cfdisk interativo)
+echo "[4/13] 💽 Particionando o disco ${DISCO}..."
 parted --script "$DISCO" \
   mklabel gpt \
-  mkpart primary fat32 1MiB $EFI_SIZE \
+  mkpart ESP fat32 1MiB $EFI_SIZE \
   set 1 boot on \
-  mkpart primary ext4 $EFI_SIZE 100%
+  mkpart primary ext4 $EFI_SIZE -$SWAP_SIZE \
+  mkpart primary linux-swap -$SWAP_SIZE 100%
 
-echo "==> Formatando partições..."
+echo "[5/13] 🧼 Formatando partições..."
 mkfs.fat -F32 "${DISCO}1"
 mkfs.ext4 "${DISCO}2"
+mkswap "${DISCO}3"
 
-echo "==> Montando partições..."
+echo "[6/13] 📂 Montando partições..."
 mount "${DISCO}2" /mnt
-mkdir -p /mnt/boot
-mount "${DISCO}1" /mnt/boot
+mkdir -p /mnt/boot/efi
+mount "${DISCO}1" /mnt/boot/efi
+swapon "${DISCO}3"
 
-echo "==> Instalando sistema base..."
-pacstrap -K /mnt base linux linux-firmware vim nano networkmanager
+echo "[7/13] 📦 Instalando sistema base..."
+pacstrap -K /mnt base base-devel linux linux-firmware vim nano sudo networkmanager grub efibootmgr dosfstools mtools os-prober
 
-echo "==> Gerando fstab..."
+echo "[8/13] 📝 Gerando fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
-echo "==> Entrando no chroot para configurar o sistema..."
+echo "[9/13] 🏠 Entrando no chroot..."
 arch-chroot /mnt /bin/bash <<EOF
-
 set -e
 
-echo "==> Definindo timezone..."
+echo "[10/13] 🌎 Configurando timezone e localedef..."
 ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
 hwclock --systohc
-
-echo "==> Configurando locale..."
-sed -i 's/^#${LOCALE}/${LOCALE}/' /etc/locale.gen
+sed -i "s/^#${LOCALE}/${LOCALE}/" /etc/locale.gen
 locale-gen
 echo "LANG=${LOCALE}" > /etc/locale.conf
 
-echo "==> Configurando hostname..."
+echo "[11/13] 🖥️ Configurando rede e usuário..."
 echo "${HOSTNAME}" > /etc/hostname
-
-echo "==> Configurando hosts..."
 cat > /etc/hosts << HOSTS
 127.0.0.1   localhost
 ::1         localhost
 127.0.1.1   ${HOSTNAME}.localdomain ${HOSTNAME}
 HOSTS
 
-echo "==> Definindo senha root (padrão: archroot)..."
-echo -e "archroot\narchroot" | passwd
+echo "root:${SENHA}" | chpasswd
+useradd -mG wheel ${USUARIO}
+echo "${USUARIO}:${SENHA}" | chpasswd
+sed -i 's/^# %wheel/%wheel/' /etc/sudoers
 
-echo "==> Habilitando NetworkManager..."
+echo "[12/13] ⚙️ Instalando bootloader (${MODO_BOOT})..."
+if [ "${MODO_BOOT}" == "uefi" ]; then
+  grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --recheck
+else
+  grub-install --target=i386-pc ${DISCO}
+fi
+
+# Opcional: ativar detecção de outros sistemas
+sed -i 's/^#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=false/' /etc/default/grub || true
+
+grub-mkconfig -o /boot/grub/grub.cfg
+
+echo "[13/13] 🚀 Habilitando serviços de rede..."
 systemctl enable NetworkManager
-
-echo "==> Instalando systemd-boot..."
-bootctl install
-
-echo "==> Criando arquivo de boot..."
-cat > /boot/loader/entries/arch.conf << ENTRY
-title   Avalon Linux
-linux   /vmlinuz-linux
-initrd  /initramfs-linux.img
-options root=${DISCO}2 rw
-ENTRY
-
-echo "default arch.conf" > /boot/loader/loader.conf
-
 EOF
 
-echo "==> Desmontando partições..."
+echo "🧹 Desmontando partições e finalizando instalação..."
 umount -R /mnt
+swapoff "${DISCO}3"
 
-echo "==> Instalação concluída! Remova a ISO da VM e reinicie."
+echo "✅ Instalação do Avalon concluída com sucesso!"
+echo "🔁 Remova a ISO do drive e reinicie com: reboot"
