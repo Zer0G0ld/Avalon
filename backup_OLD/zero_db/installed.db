@@ -1,0 +1,7 @@
+CREATE TABLE packages (
+    name TEXT PRIMARY KEY,
+    version TEXT,
+    repo TEXT,
+    installed_at DATETIME
+);
+

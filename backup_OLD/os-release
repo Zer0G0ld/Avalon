@@ -1,0 +1,11 @@
+NAME="Avalon Linux"
+PRETTY_NAME="Avalon Linux"
+ID=avalon
+BUILD_ID=rolling
+ANSI_COLOR="36;1;40"
+HOME_URL="https://github.com/Zer0G0ld/avalon"
+DOCUMENTATION_URL="https://wiki.archlinux.org/"
+SUPPORT_URL="https://bbs.archlinux.org/"
+BUG_REPORT_URL="https://gitlab.archlinux.org/groups/archlinux/-/issues"
+PRIVACY_POLICY_URL="https://terms.archlinux.org/docs/privacy-policy/"
+LOGO=avalon

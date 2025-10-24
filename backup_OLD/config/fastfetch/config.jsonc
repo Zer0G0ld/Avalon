@@ -1,0 +1,23 @@
+{
+  "logo": {
+    "type": "ascii",
+    "source": "/home/avalon/.config/fastfetch/avalon.txt",
+    "paddingLeft": 2,
+    "paddingTop": 1
+  },
+  "display": {
+    "separator": "│"
+  },
+  "modules": [
+    "os",
+    "kernel",
+    "uptime",
+    "packages",
+    "shell",
+    "terminal",
+    "cpu",
+    "gpu",
+    "memory",
+    "localip"
+  ]
+}

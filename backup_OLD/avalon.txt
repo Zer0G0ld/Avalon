@@ -1,0 +1,69 @@
+=== Pacotes instalados ===
+alsa-card-profiles
+dunst
+grim
+hyprcursor
+hyprgraphics
+hypridle
+hyprland
+hyprland-qt-support
+hyprland-qtutils
+hyprlang
+hyprlock
+hyprpaper
+hyprpicker
+hyprshot
+hyprutils
+hyprwayland-scanner
+kitty
+kitty-shell-integration
+kitty-terminfo
+libpipewire
+networkmanager
+pipewire
+pipewire-alsa
+pipewire-audio
+pipewire-jack
+pipewire-pulse
+polkit
+polkit-kde-agent
+polkit-qt5
+polkit-qt6
+python-mako
+qt5-wayland
+qt6-wayland
+rofi
+slurp
+wayland
+wayland-protocols
+wl-clipboard
+wlogout
+wlogout-debug
+xdg-desktop-portal-hyprland
+xorg-fonts-encodings
+xorg-server-common
+xorg-setxkbmap
+xorg-xkbcomp
+xorg-xprop
+xorg-xset
+xorg-xwayland
+xorgproto
+=== Serviços ativos ===
+UNIT FILE                          STATE   PRESET 
+ 
+getty@.service                     enabled enab
+led 
+iwd.service                        enabled disa
+bled
+NetworkManager-dispatcher.service  enabled disa
+bled
+NetworkManager-wait-online.service enabled disa
+bled
+NetworkManager.service             enabled
+ disabled
+systemd-userdbd.socket             enabled
+ enabled 
+remote-fs.target                   enabled enab
+led 
+
+7 unit files listed.

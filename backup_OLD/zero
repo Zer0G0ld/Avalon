@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+import os, sys, sqlite3, requests, tarfile, json, datetime
+
+CACHE_DIR = "/var/cache/zero"
+DB_FILE = "/var/lib/zero/installed.db"
+REPO_FILE = "/etc/zero/repos.json"
+
+os.makedirs(CACHE_DIR, exist_ok=True)
+os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
+
+conn = sqlite3.connect(DB_FILE)
+c = conn.cursor()
+c.execute("""CREATE TABLE IF NOT EXISTS packages(
+                name TEXT PRIMARY KEY,
+                version TEXT,
+                repo TEXT,
+                installed_at TEXT
+            )""")
+conn.commit()
+
+def load_repos():
+    with open(REPO_FILE) as f:
+        return json.load(f)
+
+def install(pkg):
+    repos = load_repos()
+    # Procurar pacote nos repositórios
+    for name, url in repos.items():
+        pkg_url = f"{url}{pkg}-latest-x86_64.pkg.tar.zst"
+        try:
+            print(f"[Zero] Baixando {pkg} de {name}...")
+            r = requests.get(pkg_url, stream=True)
+            if r.status_code == 200:
+                local_path = os.path.join(CACHE_DIR, f"{pkg}.tar.zst")
+                with open(local_path, "wb") as f:
+                    f.write(r.content)
+                print(f"[Zero] Extraindo {pkg}...")
+                os.system(f"tar -I zstd -xf {local_path} -C /")
+                c.execute("INSERT OR REPLACE INTO packages(name,version,repo,installed_at) VALUES(?,?,?,?)",
+                          (pkg,"latest",name,datetime.datetime.now().isoformat()))
+                conn.commit()
+                print(f"[Zero] Pacote {pkg} instalado com sucesso!")
+                return
+        except:
+            continue
+    print(f"[Zero] Pacote {pkg} não encontrado em nenhum repositório.")
+
+def list_installed():
+    for row in c.execute("SELECT name,version,repo,installed_at FROM packages"):
+        print(f"{row[0]} {row[1]} ({row[2]}) - instalado em {row[3]}")
+
+if len(sys.argv) < 2:
+    print("Uso: zero <install|list|remove|update|search|info> <pacote>")
+    sys.exit(0)
+
+cmd = sys.argv[1].lower()
+if cmd == "install" and len(sys.argv) > 2:
+    install(sys.argv[2])
+elif cmd == "list":
+    list_installed()
+else:
+    print(f"[Zero] Comando {cmd} não implementado ainda.")
